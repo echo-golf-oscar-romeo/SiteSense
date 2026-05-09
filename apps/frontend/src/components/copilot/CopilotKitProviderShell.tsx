@@ -17,21 +17,38 @@
  * `useFrontendTool({ render })`. CopilotKit's resolver prefers exact-name
  * matches over the wildcard, so the bespoke render slots in page.tsx
  * (renderEmailDraft, renderEnrichmentStream, etc.) still take precedence.
+ *
+ * On routes that don't need CopilotKit (e.g. /sitesense), the provider
+ * still mounts but won't cause errors as long as no CopilotKit hooks are
+ * called. The runtime-info fetch errors in the console on those routes are
+ * expected when the BFF is not running — they are harmless.
  */
 
 import { z } from "zod";
 import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 import { ToolCallView } from "./ToolCallView";
+import { usePathname } from "next/navigation";
 
 const RENDER_TOOL_CALLS = [
   { name: "*", args: z.any(), render: ToolCallView },
 ];
+
+// Routes that don't use CopilotKit — skip the provider to avoid
+// spurious backend-connection errors in the console.
+const COPILOTKIT_FREE_ROUTES = ["/sitesense"];
 
 export function CopilotKitProviderShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const skip = COPILOTKIT_FREE_ROUTES.some((r) => pathname.startsWith(r));
+
+  if (skip) {
+    return <>{children}</>;
+  }
+
   return (
     <CopilotKitProvider
       runtimeUrl="/api/copilotkit"
