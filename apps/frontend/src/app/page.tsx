@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, LayoutGrid, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, LayoutGrid, Map, Sparkles } from "lucide-react";
 
 export const metadata = {
   title: "Hackathon Starter Kit",
@@ -8,6 +8,15 @@ export const metadata = {
 };
 
 const tiles = [
+  {
+    href: "/sitesense",
+    eyebrow: "App",
+    title: "SiteSense",
+    blurb:
+      "Urban analysis copilot: type a spatial question, get an agent-planned OSM storymap with a live map, metrics, and planning takeaways.",
+    icon: Map,
+    highlight: true,
+  },
   {
     href: "/leads",
     eyebrow: "Demo",
@@ -53,12 +62,16 @@ export default function HomePage() {
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {tiles.map(({ href, eyebrow, title, blurb, icon: Icon }) => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {tiles.map(({ href, eyebrow, title, blurb, icon: Icon, highlight }) => (
           <Link
             key={href}
             href={href}
-            className="group flex flex-col rounded-2xl border bg-card p-6 transition-colors hover:border-accent hover:bg-muted/40"
+            className={`group flex flex-col rounded-2xl border p-6 transition-colors hover:border-accent hover:bg-muted/40 ${
+              highlight
+                ? "border-accent/40 bg-accent/5 md:col-span-2 lg:col-span-2"
+                : "bg-card"
+            }`}
           >
             <Icon
               size={20}
