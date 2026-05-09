@@ -1,79 +1,48 @@
-import { PLACES, PLACE_ALIASES } from "./places";
 import { FEATURE_TAGS, FEATURE_ALIASES } from "./featureTags";
 
 export interface ParsedPrompt {
   feature: string;
   place: string;
   featureLabel: string;
-  placeLabel: string;
   confidence: number;
   valid: boolean;
   error?: string;
 }
 
-export function parsePrompt(prompt: string): ParsedPrompt {
-  const lower = prompt.toLowerCase().trim();
+export function parsePrompt(raw: string): ParsedPrompt {
+  const lower = raw.toLowerCase().trim();
 
+  // Longest-first alias scan to avoid partial matches
+  const sorted = Object.entries(FEATURE_ALIASES).sort(([a], [b]) => b.length - a.length);
   let detectedFeature: string | null = null;
-  for (const [alias, featureKey] of Object.entries(FEATURE_ALIASES)) {
-    if (lower.includes(alias)) {
-      detectedFeature = featureKey;
-      break;
-    }
+  for (const [alias, key] of sorted) {
+    if (lower.includes(alias)) { detectedFeature = key; break; }
   }
 
-  let detectedPlace: string | null = null;
-  for (const [alias, placeKey] of Object.entries(PLACE_ALIASES)) {
-    if (lower.includes(alias)) {
-      detectedPlace = placeKey;
-      break;
-    }
+  // Extract place — everything after " in "
+  let detectedPlace = "";
+  const m = lower.match(/\bin\s+(.+?)(?:\s*\?|$)/i);
+  if (m) {
+    detectedPlace = m[1].trim().split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   }
 
   if (!detectedFeature && !detectedPlace) {
-    return {
-      feature: "",
-      place: "",
-      featureLabel: "",
-      placeLabel: "",
-      confidence: 0,
-      valid: false,
-      error:
-        "Could not understand this prompt. Try: \"Analyze places of worship in Kowloon\"",
-    };
+    return { feature: "", place: "", featureLabel: "", confidence: 0, valid: false,
+      error: 'Try: "Analyze places of worship in Kowloon" or "Analyze schools in Brooklyn"' };
   }
-
   if (!detectedFeature) {
-    return {
-      feature: "",
-      place: detectedPlace!,
-      featureLabel: "",
-      placeLabel: PLACES[detectedPlace!].label,
-      confidence: 0,
-      valid: false,
-      error:
-        "Could not detect a feature type. Supported: places of worship, schools, public toilets, hospitals, libraries.",
-    };
+    return { feature: "", place: detectedPlace, featureLabel: "", confidence: 0, valid: false,
+      error: "Supported: places of worship · schools · public toilets · hospitals · libraries" };
   }
-
   if (!detectedPlace) {
-    return {
-      feature: detectedFeature,
-      place: "",
-      featureLabel: FEATURE_TAGS[detectedFeature].label,
-      placeLabel: "",
-      confidence: 0,
-      valid: false,
-      error:
-        "Could not detect a place. Supported: Kowloon, Hong Kong Island, Central, Mong Kok, Tsim Sha Tsui.",
-    };
+    return { feature: detectedFeature, place: "", featureLabel: FEATURE_TAGS[detectedFeature].label,
+      confidence: 0, valid: false, error: 'Add "in [place]" — any city or district works.' };
   }
 
   return {
     feature: detectedFeature,
     place: detectedPlace,
     featureLabel: FEATURE_TAGS[detectedFeature].label,
-    placeLabel: PLACES[detectedPlace].label,
     confidence: 0.92,
     valid: true,
   };

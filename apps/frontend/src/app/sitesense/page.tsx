@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { parsePrompt } from "@/lib/sitesense/parser";
 import { generatePlan, type PlannerOutput } from "@/lib/sitesense/planner";
-import { fetchOverpassData } from "@/lib/sitesense/overpass";
+import {
+  fetchOverpassData,
+  fetchAreaBoundary,
+} from "@/lib/sitesense/overpass";
 import { overpassToGeoJSON, type GeoCollection } from "@/lib/sitesense/geo";
 import { analyzeFeatures, type AnalysisResult } from "@/lib/sitesense/analysis";
 import { generateStory, type StorySchema } from "@/lib/sitesense/story";
@@ -21,6 +24,7 @@ interface AnalysisState {
   geoData: GeoCollection;
   analysis: AnalysisResult;
   story: StorySchema;
+  boundary: GeoJSON.FeatureCollection | null;
   usedFallback: boolean;
   featureLabel: string;
   placeLabel: string;
@@ -28,18 +32,15 @@ interface AnalysisState {
 
 export default function SiteSensePage() {
   const [screen, setScreen] = useState<Screen>("prompt");
-  const [currentPrompt, setCurrentPrompt] = useState("");
   const [currentFeature, setCurrentFeature] = useState("");
   const [currentPlace, setCurrentPlace] = useState("");
   const [featureLabel, setFeatureLabel] = useState("");
-  const [placeLabel, setPlaceLabel] = useState("");
   const [plan, setPlan] = useState<PlannerOutput | null>(null);
   const [result, setResult] = useState<AnalysisState | null>(null);
   const [loadingStep, setLoadingStep] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleAnalyze = (prompt: string) => {
-    setCurrentPrompt(prompt);
     const parsed = parsePrompt(prompt);
 
     if (!parsed.valid) {
@@ -51,7 +52,6 @@ export default function SiteSensePage() {
     setCurrentFeature(parsed.feature);
     setCurrentPlace(parsed.place);
     setFeatureLabel(parsed.featureLabel);
-    setPlaceLabel(parsed.placeLabel);
     setPlan(generatePlan(parsed));
     setScreen("plan");
   };
@@ -71,7 +71,7 @@ export default function SiteSensePage() {
       } catch {
         fallback = true;
         overpassResult =
-          DEMO_DATA[currentFeature]?.[currentPlace] ??
+          DEMO_DATA[currentFeature]?.kowloon ??
           DEMO_DATA.places_of_worship.kowloon;
       }
 
@@ -79,38 +79,51 @@ export default function SiteSensePage() {
       const geoData = overpassToGeoJSON(overpassResult);
 
       setLoadingStep("Computing spatial analysis…");
-      const analysis = analyzeFeatures(geoData.features, currentFeature);
+      const [analysis, boundary] = await Promise.all([
+        analyzeFeatures(geoData.features, currentFeature),
+        fetchAreaBoundary(currentPlace).catch(() => null),
+      ]);
 
       setLoadingStep("Generating storymap…");
-      const story = generateStory(currentFeature, currentPlace, analysis, fallback);
+      const story = generateStory(
+        currentFeature,
+        currentPlace,
+        analysis,
+        fallback
+      );
 
       setResult({
         plan: plan!,
         geoData,
         analysis,
         story,
+        boundary,
         usedFallback: fallback,
         featureLabel,
-        placeLabel,
+        placeLabel: currentPlace,
       });
       setScreen("result");
-    } catch (err) {
+    } catch {
       setErrorMsg("Analysis failed. Overpass may be unavailable.");
       setScreen("error");
     }
   };
 
-  const handleUseDemoData = () => {
+  const handleUseDemoData = async () => {
     if (!currentFeature || !currentPlace) {
       setScreen("prompt");
       return;
     }
-    const overpassResult =
-      DEMO_DATA[currentFeature]?.[currentPlace] ??
-      DEMO_DATA.places_of_worship.kowloon;
+    setScreen("loading");
+    setLoadingStep("Loading demo dataset…");
 
+    const overpassResult =
+      DEMO_DATA[currentFeature]?.kowloon ??
+      DEMO_DATA.places_of_worship.kowloon;
     const geoData = overpassToGeoJSON(overpassResult);
-    const analysis = analyzeFeatures(geoData.features, currentFeature);
+
+    setLoadingStep("Computing spatial analysis…");
+    const analysis = await analyzeFeatures(geoData.features, currentFeature);
     const story = generateStory(currentFeature, currentPlace, analysis, true);
 
     setResult({
@@ -118,9 +131,10 @@ export default function SiteSensePage() {
       geoData,
       analysis,
       story,
+      boundary: null,
       usedFallback: true,
       featureLabel,
-      placeLabel,
+      placeLabel: currentPlace,
     });
     setScreen("result");
   };
@@ -143,7 +157,7 @@ export default function SiteSensePage() {
     return (
       <LoadingState
         featureLabel={featureLabel}
-        placeLabel={placeLabel}
+        placeLabel={currentPlace}
         currentStep={loadingStep}
       />
     );
@@ -155,6 +169,7 @@ export default function SiteSensePage() {
         story={result.story}
         geoData={result.geoData}
         analysis={result.analysis}
+        boundary={result.boundary}
         usedFallback={result.usedFallback}
         onBack={() => setScreen("prompt")}
       />

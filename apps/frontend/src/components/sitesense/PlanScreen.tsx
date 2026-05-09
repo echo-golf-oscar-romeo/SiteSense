@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, ChevronRight, Code2, Edit2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, Edit2 } from "lucide-react";
 import type { PlannerOutput } from "@/lib/sitesense/planner";
 import { FEATURE_TAGS } from "@/lib/sitesense/featureTags";
+import { P, TEXT, TEXT_MUTED, TEXT_SUBTLE } from "@/lib/sitesense/colors";
 
 interface Props {
   plan: PlannerOutput;
@@ -12,57 +12,95 @@ interface Props {
 }
 
 export function PlanScreen({ plan, onContinue, onBack }: Props) {
-  const [showSchema, setShowSchema] = useState(false);
   const icon = FEATURE_TAGS[plan.detected.feature]?.icon ?? "📍";
 
   return (
-    <div className="min-h-screen px-6 py-12 max-w-2xl mx-auto">
+    <div
+      className="min-h-screen px-6 py-12 max-w-2xl mx-auto"
+      style={{ background: P[0], color: TEXT }}
+    >
       {/* Header */}
       <div className="mb-8">
-        <p className="text-xs font-medium uppercase tracking-widest text-accent mb-2">
+        <p
+          className="text-xs font-semibold uppercase tracking-widest mb-2"
+          style={{ color: P[4] }}
+        >
           Agent Plan
         </p>
-        <h2 className="text-2xl font-bold text-foreground mb-1">{plan.title}</h2>
-        <p className="text-sm text-muted-foreground">
-          The agent has parsed your request and generated the analysis workflow below.
+        <h2 className="text-2xl font-bold mb-1" style={{ color: TEXT }}>
+          {plan.title}
+        </h2>
+        <p className="text-sm" style={{ color: TEXT_MUTED }}>
+          The agent parsed your request and generated the analysis workflow below.
         </p>
       </div>
 
       {/* Detected entities */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Feature</p>
-          <p className="font-semibold text-foreground">
+        <div
+          className="rounded-xl p-4"
+          style={{ background: P[1], border: `1px solid ${P[2]}` }}
+        >
+          <p
+            className="text-xs uppercase tracking-wider mb-1"
+            style={{ color: TEXT_MUTED }}
+          >
+            Feature
+          </p>
+          <p className="font-semibold" style={{ color: TEXT }}>
             {icon} {plan.detected.featureLabel}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs mt-1" style={{ color: TEXT_SUBTLE }}>
             {plan.detected.osmTags.map((t) => `${t.key}=${t.value}`).join(", ")}
           </p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Area</p>
-          <p className="font-semibold text-foreground">📍 {plan.detected.placeLabel}</p>
-          <p className="text-xs text-muted-foreground mt-1">OpenStreetMap / Overpass</p>
+        <div
+          className="rounded-xl p-4"
+          style={{ background: P[1], border: `1px solid ${P[2]}` }}
+        >
+          <p
+            className="text-xs uppercase tracking-wider mb-1"
+            style={{ color: TEXT_MUTED }}
+          >
+            Area
+          </p>
+          <p className="font-semibold" style={{ color: TEXT }}>
+            📍 {plan.detected.place}
+          </p>
+          <p className="text-xs mt-1" style={{ color: TEXT_SUBTLE }}>
+            OpenStreetMap · Overpass API
+          </p>
         </div>
       </div>
 
       {/* Steps */}
       <div className="mb-6">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+        <p
+          className="text-xs font-medium uppercase tracking-wider mb-3"
+          style={{ color: TEXT_MUTED }}
+        >
           Analysis steps
         </p>
         <div className="space-y-2">
           {plan.steps.map((step, i) => (
             <div
               key={i}
-              className="flex items-start gap-3 rounded-lg border bg-card px-4 py-3"
+              className="flex items-start gap-3 rounded-lg px-4 py-3"
+              style={{ background: P[1], border: `1px solid ${P[2]}` }}
             >
-              <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-accent/10 text-accent text-xs flex items-center justify-center font-semibold">
+              <span
+                className="mt-0.5 shrink-0 w-5 h-5 rounded-full text-xs flex items-center justify-center font-semibold"
+                style={{ background: P[2], color: P[5] }}
+              >
                 {i + 1}
               </span>
               <div>
-                <p className="text-sm font-medium text-foreground">{step.label}</p>
-                <p className="text-xs text-muted-foreground">{step.detail}</p>
+                <p className="text-sm font-medium" style={{ color: TEXT }}>
+                  {step.label}
+                </p>
+                <p className="text-xs" style={{ color: TEXT_SUBTLE }}>
+                  {step.detail}
+                </p>
               </div>
             </div>
           ))}
@@ -70,15 +108,22 @@ export function PlanScreen({ plan, onContinue, onBack }: Props) {
       </div>
 
       {/* UI plan */}
-      <div className="mb-6 rounded-xl border bg-muted/40 p-4">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+      <div
+        className="mb-6 rounded-xl p-4"
+        style={{ background: P[1], border: `1px solid ${P[2]}` }}
+      >
+        <p
+          className="text-xs font-medium uppercase tracking-wider mb-2"
+          style={{ color: TEXT_MUTED }}
+        >
           UI will generate
         </p>
         <div className="flex flex-wrap gap-2">
           {plan.uiPlan.map((item) => (
             <span
               key={item}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/10 text-accent text-xs"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs"
+              style={{ background: P[2], color: P[5] }}
             >
               <CheckCircle2 size={10} />
               {item}
@@ -87,33 +132,24 @@ export function PlanScreen({ plan, onContinue, onBack }: Props) {
         </div>
       </div>
 
-      {/* Schema toggle */}
-      <button
-        onClick={() => setShowSchema((s) => !s)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors"
-      >
-        <Code2 size={12} />
-        {showSchema ? "Hide" : "Inspect"} plan schema
-      </button>
-
-      {showSchema && (
-        <pre className="mb-6 rounded-xl border bg-card p-4 text-xs text-muted-foreground overflow-auto max-h-64 font-mono">
-          {JSON.stringify(plan, null, 2)}
-        </pre>
-      )}
-
       {/* Actions */}
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border text-sm transition-opacity hover:opacity-70"
+          style={{
+            borderColor: P[3],
+            color: TEXT_MUTED,
+            background: "transparent",
+          }}
         >
           <Edit2 size={14} />
           Edit prompt
         </button>
         <button
           onClick={onContinue}
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-all"
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          style={{ background: P[5], color: P[0] }}
         >
           Run analysis
           <ChevronRight size={16} />

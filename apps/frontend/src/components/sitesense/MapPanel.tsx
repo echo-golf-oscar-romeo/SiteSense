@@ -4,49 +4,67 @@ import { useEffect, useRef } from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { GeoCollection } from "@/lib/sitesense/geo";
 import type { AnalysisResult } from "@/lib/sitesense/analysis";
-import type { StoryChapter } from "@/lib/sitesense/story";
+import type { MapMode } from "@/lib/sitesense/story";
+import {
+  POINT_COLOR,
+  BOUNDARY_COLOR,
+  COVERAGE_COLOR,
+  GAP_COLOR,
+  H3_SCALE,
+  TAG_COLORS,
+  TEXT_MUTED,
+  P,
+} from "@/lib/sitesense/colors";
 
-// This file is loaded ssr:false via next/dynamic — CSS import is safe here
+// Safe to import CSS here — this file is always loaded ssr:false via next/dynamic
 import "maplibre-gl/dist/maplibre-gl.css";
+
+const CARTO_STYLE =
+  "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json";
+
+const MODE_LABELS: Record<MapMode, string> = {
+  points: "Feature points",
+  hexgrid: "H3 density grid",
+  coverage: "Service coverage",
+  gaps: "Underserved zones",
+};
 
 interface Props {
   geoData: GeoCollection;
   analysis: AnalysisResult;
-  activeChapter: StoryChapter["id"];
+  boundary: GeoJSON.FeatureCollection | null;
+  mapMode: MapMode;
   bbox: [number, number, number, number];
 }
 
-const MAP_STYLE = {
-  version: 8 as const,
-  sources: {
-    "osm-raster": {
-      type: "raster" as const,
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-      maxzoom: 19,
-    },
-  },
-  layers: [
-    {
-      id: "osm-raster",
-      type: "raster" as const,
-      source: "osm-raster",
-      paint: { "raster-opacity": 0.92 },
-    },
-  ],
-};
+function applyMode(map: MapLibreMap, mode: MapMode) {
+  const setV = (id: string, on: boolean) => {
+    if (map.getLayer(id))
+      map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+  };
+  setV("feature-points", mode === "points");
+  setV("h3-fill", mode === "hexgrid");
+  setV("h3-line", mode === "hexgrid");
+  setV("coverage-fill", mode === "coverage");
+  setV("coverage-line", mode === "coverage");
+  setV("gap-fill", mode === "gaps");
+}
 
-const POINT_COLORS: Record<string, string> = {
-  overview: "#6366f1",
-  pattern: "#ec4899",
-  takeaways: "#f59e0b",
-};
-
-export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
+export function MapPanel({
+  geoData,
+  analysis,
+  boundary,
+  mapMode,
+  bbox,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const initRef = useRef(false);
+  const modeRef = useRef<MapMode>(mapMode);
+
+  useEffect(() => {
+    modeRef.current = mapMode;
+  }, [mapMode]);
 
   useEffect(() => {
     if (!containerRef.current || initRef.current) return;
@@ -55,13 +73,11 @@ export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
     let map: MapLibreMap;
 
     (async () => {
-      const maplibre = await import("maplibre-gl");
-      const { Map, Popup, AttributionControl } = maplibre;
+      const { Map, Popup, AttributionControl } = await import("maplibre-gl");
 
       map = new Map({
         container: containerRef.current!,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        style: MAP_STYLE as any,
+        style: CARTO_STYLE,
         bounds: [
           [bbox[0], bbox[1]],
           [bbox[2], bbox[3]],
@@ -73,35 +89,108 @@ export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
       mapRef.current = map;
 
       map.on("load", () => {
+        // ── Sources ────────────────────────────────────────────────────────
         map.addSource("features", {
           type: "geojson",
           data: geoData as GeoJSON.FeatureCollection,
         });
+        map.addSource("h3", { type: "geojson", data: analysis.h3GeoJSON });
+        map.addSource("coverage", {
+          type: "geojson",
+          data: analysis.coverageGeoJSON,
+        });
+        map.addSource("gaps", { type: "geojson", data: analysis.gapGeoJSON });
+        if (boundary) {
+          map.addSource("boundary", { type: "geojson", data: boundary });
+        }
 
-        // Heatmap layer (behind points)
+        // ── Gap cells ──────────────────────────────────────────────────────
         map.addLayer({
-          id: "feature-heat",
-          type: "heatmap",
-          source: "features",
-          maxzoom: 17,
+          id: "gap-fill",
+          type: "fill",
+          source: "gaps",
+          paint: { "fill-color": GAP_COLOR, "fill-opacity": 0.18 },
+          layout: { visibility: modeRef.current === "gaps" ? "visible" : "none" },
+        });
+
+        // ── Coverage circles ───────────────────────────────────────────────
+        map.addLayer({
+          id: "coverage-fill",
+          type: "fill",
+          source: "coverage",
+          paint: { "fill-color": COVERAGE_COLOR, "fill-opacity": 0.12 },
+          layout: {
+            visibility: modeRef.current === "coverage" ? "visible" : "none",
+          },
+        });
+        map.addLayer({
+          id: "coverage-line",
+          type: "line",
+          source: "coverage",
           paint: {
-            "heatmap-weight": 1,
-            "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 3],
-            "heatmap-color": [
-              "interpolate",
-              ["linear"],
-              ["heatmap-density"],
-              0, "rgba(236,72,153,0)",
-              0.3, "rgba(236,72,153,0.4)",
-              0.7, "rgba(236,72,153,0.7)",
-              1, "rgba(236,72,153,1)",
-            ],
-            "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 15, 15, 30],
-            "heatmap-opacity": 0,
+            "line-color": COVERAGE_COLOR,
+            "line-opacity": 0.45,
+            "line-width": 1,
+          },
+          layout: {
+            visibility: modeRef.current === "coverage" ? "visible" : "none",
           },
         });
 
-        // Points layer
+        // ── H3 hexgrid ─────────────────────────────────────────────────────
+        map.addLayer({
+          id: "h3-fill",
+          type: "fill",
+          source: "h3",
+          paint: {
+            "fill-color": [
+              "interpolate",
+              ["linear"],
+              ["get", "normalizedCount"],
+              0, H3_SCALE[0],
+              1 / 6, H3_SCALE[1],
+              2 / 6, H3_SCALE[2],
+              3 / 6, H3_SCALE[3],
+              4 / 6, H3_SCALE[4],
+              5 / 6, H3_SCALE[5],
+              1, H3_SCALE[6],
+            ],
+            "fill-opacity": 0.72,
+          },
+          layout: {
+            visibility: modeRef.current === "hexgrid" ? "visible" : "none",
+          },
+        });
+        map.addLayer({
+          id: "h3-line",
+          type: "line",
+          source: "h3",
+          paint: {
+            "line-color": "#ffffff",
+            "line-opacity": 0.3,
+            "line-width": 0.6,
+          },
+          layout: {
+            visibility: modeRef.current === "hexgrid" ? "visible" : "none",
+          },
+        });
+
+        // ── Area boundary ──────────────────────────────────────────────────
+        if (boundary) {
+          map.addLayer({
+            id: "boundary-line",
+            type: "line",
+            source: "boundary",
+            paint: {
+              "line-color": BOUNDARY_COLOR,
+              "line-opacity": 0.55,
+              "line-width": 1.5,
+              "line-dasharray": [3, 2],
+            },
+          });
+        }
+
+        // ── Feature points ────────────────────────────────────────────────
         map.addLayer({
           id: "feature-points",
           type: "circle",
@@ -111,13 +200,16 @@ export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
               "interpolate",
               ["linear"],
               ["zoom"],
-              10, 4,
-              15, 8,
+              10, 3.5,
+              15, 7,
             ],
-            "circle-color": POINT_COLORS.overview,
-            "circle-opacity": 0.8,
+            "circle-color": POINT_COLOR,
+            "circle-opacity": 0.85,
             "circle-stroke-width": 1.5,
             "circle-stroke-color": "#ffffff",
+          },
+          layout: {
+            visibility: modeRef.current === "points" ? "visible" : "none",
           },
         });
 
@@ -126,18 +218,27 @@ export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
           if (!e.features?.length) return;
           const props = e.features[0].properties as Record<string, string>;
           const name = props.name || props.amenity || "Feature";
-          const extra = Object.entries(props)
-            .filter(([k]) => !["amenity", "name"].includes(k) && props[k])
+          const extras = Object.entries(props)
+            .filter(([k, v]) => k !== "name" && v)
             .slice(0, 3)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join("<br/>");
-
-          new Popup({ closeButton: true, maxWidth: "220px" })
-            .setLngLat((e.features[0].geometry as GeoJSON.Point).coordinates as [number, number])
-            .setHTML(`<strong style="font-size:13px">${name}</strong>${extra ? `<br/><small style="color:#666">${extra}</small>` : ""}`)
+            .map(
+              ([k, v]) =>
+                `<tr><td style="color:${TEXT_MUTED};padding-right:6px">${k}</td><td>${v}</td></tr>`
+            )
+            .join("");
+          new Popup({ closeButton: true, maxWidth: "240px" })
+            .setLngLat(
+              (e.features[0].geometry as GeoJSON.Point)
+                .coordinates as [number, number]
+            )
+            .setHTML(
+              `<strong style="font-size:13px;color:#1a3040">${name}</strong>` +
+                (extras
+                  ? `<table style="margin-top:4px;font-size:11px">${extras}</table>`
+                  : "")
+            )
             .addTo(map);
         });
-
         map.on("mouseenter", "feature-points", () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -146,6 +247,7 @@ export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
         });
 
         map.addControl(new AttributionControl({ compact: true }), "bottom-right");
+        applyMode(map, modeRef.current);
       });
     })();
 
@@ -157,28 +259,25 @@ export function MapPanel({ geoData, analysis, activeChapter, bbox }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync layer style with active chapter
   useEffect(() => {
     const map = mapRef.current;
     if (!map?.loaded()) return;
-
-    const color = POINT_COLORS[activeChapter] ?? POINT_COLORS.overview;
-    map.setPaintProperty("feature-points", "circle-color", color);
-
-    if (activeChapter === "pattern") {
-      map.setPaintProperty("feature-heat", "heatmap-opacity", 0.75);
-      map.setPaintProperty("feature-points", "circle-opacity", 0.35);
-    } else {
-      map.setPaintProperty("feature-heat", "heatmap-opacity", 0);
-      map.setPaintProperty("feature-points", "circle-opacity", 0.8);
-    }
-  }, [activeChapter]);
+    applyMode(map, mapMode);
+  }, [mapMode]);
 
   return (
-    <div className="relative w-full h-full min-h-[400px] rounded-xl overflow-hidden border">
+    <div className="relative w-full h-full min-h-[400px] rounded-xl overflow-hidden">
       <div ref={containerRef} className="w-full h-full" />
-      <div className="absolute bottom-8 left-3 rounded-lg bg-white/90 backdrop-blur-sm border px-3 py-1.5 text-xs text-gray-600">
-        {activeChapter === "pattern" ? "Heatmap" : "Points"} · {geoData.features.length} features
+      <div
+        className="absolute bottom-8 left-3 rounded-lg px-3 py-1.5 text-xs"
+        style={{
+          background: "rgba(243,249,235,0.92)",
+          color: TEXT_MUTED,
+          backdropFilter: "blur(4px)",
+          border: `1px solid ${P[2]}`,
+        }}
+      >
+        {MODE_LABELS[mapMode]} · {geoData.features.length} features
       </div>
     </div>
   );

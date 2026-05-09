@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { P, TEXT, TEXT_MUTED, TEXT_SUBTLE } from "@/lib/sitesense/colors";
 
 interface Props {
   featureLabel: string;
@@ -31,55 +32,56 @@ export function LoadingState({ featureLabel, placeLabel, currentStep }: Props) {
   const activeIndex = currentIndex >= 0 ? currentIndex : 0;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 py-16">
+    <div
+      className="flex flex-col items-center justify-center min-h-screen px-6 py-16"
+      style={{ background: P[0], color: TEXT }}
+    >
       <div className="w-full max-w-md">
         {/* Spinner */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-full border-4 border-accent/20 border-t-accent animate-spin" />
+          <div
+            className="w-12 h-12 rounded-full border-4 animate-spin"
+            style={{ borderColor: `${P[2]} ${P[2]} ${P[2]} ${P[5]}` }}
+          />
         </div>
 
-        <h2 className="text-xl font-semibold text-foreground text-center mb-2">
+        <h2 className="text-xl font-semibold text-center mb-1" style={{ color: TEXT }}>
           Analyzing {featureLabel}
         </h2>
-        <p className="text-sm text-muted-foreground text-center mb-8">
+        <p className="text-sm text-center mb-8" style={{ color: TEXT_MUTED }}>
           in {placeLabel}
         </p>
 
         {/* Steps */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {STEPS.map((step, i) => {
             const done = i < activeIndex;
             const active = i === activeIndex;
             return (
               <div
                 key={step}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 border transition-all ${
-                  active
-                    ? "border-accent bg-accent/5"
-                    : done
-                    ? "border-border/50 bg-muted/30"
-                    : "border-border/30 bg-card"
-                }`}
+                className="flex items-center gap-3 rounded-lg px-4 py-3 transition-all"
+                style={{
+                  background: active ? P[1] : done ? P[0] : P[0],
+                  border: `1px solid ${active ? P[3] : done ? P[2] : P[2] + "55"}`,
+                }}
               >
                 <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
-                    done
-                      ? "bg-accent/20 text-accent"
-                      : active
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+                  style={{
+                    background: done ? P[3] : active ? P[5] : P[2],
+                    color: done ? P[5] : active ? P[0] : TEXT_MUTED,
+                  }}
                 >
                   {done ? "✓" : i + 1}
                 </span>
                 <span
-                  className={`text-sm ${
-                    active
-                      ? "text-foreground font-medium"
-                      : done
-                      ? "text-muted-foreground line-through"
-                      : "text-muted-foreground/60"
-                  }`}
+                  className="text-sm"
+                  style={{
+                    color: active ? TEXT : done ? TEXT_MUTED : TEXT_SUBTLE,
+                    fontWeight: active ? 500 : 400,
+                    textDecoration: done ? "line-through" : "none",
+                  }}
                 >
                   {active ? step.replace("…", dots) : step}
                 </span>
@@ -88,8 +90,11 @@ export function LoadingState({ featureLabel, placeLabel, currentStep }: Props) {
           })}
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground/60">
-          Overpass API may take 5–15 s · fallback data ready if needed
+        <p
+          className="mt-6 text-center text-xs"
+          style={{ color: TEXT_SUBTLE }}
+        >
+          Overpass API may take 5–60 s · fallback data ready if needed
         </p>
       </div>
     </div>
