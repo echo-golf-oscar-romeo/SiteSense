@@ -48,9 +48,11 @@
     "embla-carousel": "8.6.0",
     "embla-carousel-react": "8.6.0",
     "geist": "^1.4.2",
+    "h3-js": "^4.4.0",
     "input-otp": "1.4.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.542.0",
+    "maplibre-gl": "^4.7.1",
     "motion": "^12.23.12",
     "next": "^15.5.15",
     "next-themes": "^0.4.6",
@@ -67,7 +69,6 @@
     "tailwind-merge": "^3.3.1",
     "tw-animate-css": "^1.3.7",
     "vaul": "^1.1.2",
-    "maplibre-gl": "^4.7.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -1,5 +1,4 @@
-import { PLACES } from "./places";
-import { FEATURE_TAGS } from "./featureTags";
+import { getFeatureConfig } from "./featureTags";
 import type { ParsedPrompt } from "./parser";
 
 export interface PlanStep {
@@ -22,49 +21,54 @@ export interface PlannerOutput {
 }
 
 export function generatePlan(parsed: ParsedPrompt): PlannerOutput {
-  const featureConfig = FEATURE_TAGS[parsed.feature];
-  const placeConfig = PLACES[parsed.place];
+  const featureConfig = getFeatureConfig(parsed.feature);
   const tagStr = featureConfig.osmTags
+    .slice(0, 4)
     .map((t) => `${t.key}=${t.value}`)
     .join(", ");
 
   return {
     surface: "analysis_plan",
-    title: `Plan for analyzing ${featureConfig.label} in ${placeConfig.label}`,
+    title: `Plan · ${featureConfig.label} in ${parsed.placeLabel}`,
     detected: {
       feature: parsed.feature,
       featureLabel: featureConfig.label,
       place: parsed.place,
-      placeLabel: placeConfig.label,
-      osmTags: featureConfig.osmTags,
+      placeLabel: parsed.placeLabel,
+      osmTags: featureConfig.osmTags.slice(0, 4),
     },
     steps: [
       {
-        label: `Find the ${placeConfig.label} area in OpenStreetMap`,
-        detail: `Using area["name"="${placeConfig.osmName}"] boundary lookup`,
+        label: `Locate ${parsed.placeLabel} in OpenStreetMap`,
+        detail: `area["name"="${parsed.placeLabel}"] boundary lookup`,
       },
       {
-        label: `Query ${featureConfig.label} using Overpass API`,
-        detail: `OSM tags: ${tagStr} — nodes, ways, and relations`,
+        label: `Query ${featureConfig.label} via Overpass API`,
+        detail: `OSM tags: ${tagStr}`,
       },
       {
-        label: "Convert OSM elements into GeoJSON points",
-        detail: "Nodes use lat/lon directly; ways and relations use centroid",
+        label: "Convert OSM elements to GeoJSON points",
+        detail: "Nodes use lat/lon; ways and relations use centroid",
       },
       {
-        label: "Compute total count and simple density clusters",
-        detail: "0.01° grid cells, sorted by feature density",
+        label: "Compute H3 hexgrid density map",
+        detail: "Resolution auto-selected by area size to avoid memory issues",
       },
       {
-        label: "Generate a storymap with findings and planning takeaways",
-        detail: "3-chapter narrative with map, metrics, and caveats",
+        label: "Fetch Mapbox isochrones for top clusters",
+        detail: `Travel-time rings by ${featureConfig.isochroneProfile ?? "walking"}: 5, 10, 15 min`,
+      },
+      {
+        label: "Generate 4-chapter storymap",
+        detail: "Inventory → density → reachability → caveats",
       },
     ],
     uiPlan: [
-      "Metric cards (count, densest cell, data source)",
-      "MapLibre map with feature points",
-      "Three narrative chapters (inventory, pattern, takeaways)",
-      "Confidence and limitation block",
+      "Metric cards",
+      "H3 hexgrid density map",
+      "Isochrone reachability rings",
+      "Area boundary overlay",
+      "4-chapter scroll narrative",
     ],
   };
 }

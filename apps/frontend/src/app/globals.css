@@ -339,3 +339,100 @@ html {
 [data-enrichment-tier-pop="true"] {
   animation: enrichment-tier-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SiteSense — custom cursor
+   Active only when <body> has .ss-cursor-active (set by CustomCursor.tsx).
+   ───────────────────────────────────────────────────────────────────────── */
+.ss-cursor-active,
+.ss-cursor-active button,
+.ss-cursor-active a,
+.ss-cursor-active input,
+.ss-cursor-active textarea,
+.ss-cursor-active select {
+  cursor: none !important;
+}
+
+.ss-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  transition:
+    width 180ms ease,
+    height 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.ss-ring-outer {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 24px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(5px);
+}
+
+.ss-ring-middle {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(15, 23, 42, 0.32);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.ss-ring-center {
+  width: 7px;
+  height: 7px;
+  background: #1a3040;
+}
+
+#ss-cursor.hover .ss-ring-outer {
+  width: 56px;
+  height: 56px;
+  border-color: rgba(74, 124, 48, 0.4);
+  background: rgba(74, 124, 48, 0.07);
+  box-shadow: 0 0 32px rgba(74, 124, 48, 0.22);
+}
+
+#ss-cursor.hover .ss-ring-middle {
+  width: 32px;
+  height: 32px;
+  border-color: rgba(74, 124, 48, 0.65);
+  background: rgba(74, 124, 48, 0.09);
+}
+
+#ss-cursor.hover .ss-ring-center {
+  width: 9px;
+  height: 9px;
+  background: #4a7c30;
+}
+
+@media (max-width: 767px) {
+  .ss-cursor-active,
+  .ss-cursor-active button,
+  .ss-cursor-active a,
+  .ss-cursor-active input,
+  .ss-cursor-active textarea,
+  .ss-cursor-active select {
+    cursor: auto !important;
+  }
+  #ss-cursor {
+    display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SiteSense — subtle grid background for prompt/plan screens
+   ───────────────────────────────────────────────────────────────────────── */
+.ss-grid-bg {
+  background:
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    #f4f6f8;
+  background-size: 32px 32px;
+}

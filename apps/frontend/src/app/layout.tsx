@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
 import { CopilotKitProviderShell } from "@/components/copilot/CopilotKitProviderShell";
+import { CustomCursor } from "@/components/sitesense/CustomCursor";
 import "./globals.css";
 // v2 owns its own stylesheet. Do NOT import @copilotkit/react-ui/styles.css —
 // v1's .copilotKitButton / .copilotKitSidebar / .copilotKitWindow rules
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${manrope.variable} ${GeistMono.variable}`}>
       <body className="subpixel-antialiased">
+        <CustomCursor />
         <CopilotKitProviderShell>{children}</CopilotKitProviderShell>
       </body>
     </html>
