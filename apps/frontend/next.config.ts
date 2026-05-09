@@ -11,6 +11,9 @@ loadEnvConfig(path.resolve(__dirname, "../.."));
 const BFF_URL = process.env.BFF_URL ?? "http://localhost:4000";
 
 const nextConfig: NextConfig = {
+  // Pin file tracing to monorepo root to avoid scanning the entire user home
+  // directory when a stray package-lock.json exists at C:\Users\<user>\
+  outputFileTracingRoot: path.resolve(__dirname, "../.."),
   // Proxy CopilotKit runtime requests to the Hono BFF (apps/bff). We can't run
   // the runtime in a Next.js API route directly because the runtime's v2 entry
   // pulls in express, which Next can't bundle (dynamic require in view.js).
